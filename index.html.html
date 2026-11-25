@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>暈眩風險評估與決策模擬器</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #f3f0ec; --color-border: #d4d1ca; --color-divider: #dcd9d5;
+      --color-text: #28251d; --color-text-muted: #6d6b65; --color-text-faint: #9a9892; --color-text-inverse: #f9f8f4;
+      --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-highlight: #cedcd8;
+      --color-warning: #964219; --color-warning-highlight: #ddcfc6; --color-error: #a12c7b; --color-error-highlight: #e0ced7; --color-success: #437a22; --color-success-highlight: #d4dfcc; --color-blue: #006494; --color-blue-highlight: #c6d8e4;
+      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06); --shadow-md: 0 8px 24px oklch(0.2 0.01 80 / 0.08);
+      --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      --font-body: 'Satoshi', 'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d; --color-surface-offset: #1d1c1a; --color-border: #393836; --color-divider: #262523;
+      --color-text: #cdccca; --color-text-muted: #9e9c98; --color-text-faint: #6a6967; --color-text-inverse: #2b2a28;
+      --color-primary: #4f98a3; --color-primary-hover: #227f8b; --color-primary-highlight: #313b3b;
+      --color-warning: #bb653b; --color-warning-highlight: #564942; --color-error: #d163a7; --color-error-highlight: #4c3d46; --color-success: #6daa45; --color-success-highlight: #3a4435; --color-blue: #5591c7; --color-blue-highlight: #3a4550;
+      --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2); --shadow-md: 0 8px 24px oklch(0 0 0 / 0.28);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body { margin: 0; min-height: 100dvh; font-family: var(--font-body); font-size: var(--text-base); line-height: 1.6; color: var(--color-text); background:
+      radial-gradient(circle at top right, color-mix(in oklab, var(--color-primary) 12%, transparent), transparent 26%),
+      linear-gradient(180deg, var(--color-bg), var(--color-surface-offset)); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell { max-width: 1180px; margin: 0 auto; padding: var(--space-6); }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-8); }
+    .brand { display: flex; align-items: center; gap: var(--space-3); }
+    .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--color-primary-highlight), var(--color-surface)); color: var(--color-primary); display: grid; place-items: center; box-shadow: var(--shadow-sm); border: 1px solid color-mix(in oklab, var(--color-text) 10%, transparent); }
+    .brand h1 { font-size: var(--text-lg); line-height: 1.15; margin: 0; }
+    .brand p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .theme-toggle { min-width: 44px; min-height: 44px; border-radius: var(--radius-full); border: 1px solid color-mix(in oklab, var(--color-text) 12%, transparent); background: var(--color-surface); color: var(--color-text); display: grid; place-items: center; box-shadow: var(--shadow-sm); }
+    .grid { display: grid; grid-template-columns: minmax(320px, 1.1fr) minmax(320px, 0.9fr); gap: var(--space-6); align-items: start; }
+    .panel { background: color-mix(in oklab, var(--color-surface) 92%, transparent); border: 1px solid color-mix(in oklab, var(--color-text) 10%, transparent); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); backdrop-filter: blur(12px); }
+    .panel-inner { padding: clamp(var(--space-5), 2vw, var(--space-8)); }
+    .eyebrow { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0.35rem 0.7rem; border-radius: var(--radius-full); background: var(--color-primary-highlight); color: var(--color-primary); font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .hero-title { font-size: var(--text-xl); line-height: 1.1; margin: var(--space-4) 0 var(--space-3); }
+    .hero-copy { color: var(--color-text-muted); margin: 0 0 var(--space-6); max-width: 58ch; }
+    form { display: grid; gap: var(--space-5); }
+    fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+    legend { font-size: var(--text-sm); font-weight: 700; margin-bottom: var(--space-2); }
+    .options { display: grid; gap: var(--space-2); }
+    .option, .checkbox { display: flex; gap: var(--space-3); align-items: start; padding: var(--space-3) var(--space-4); background: var(--color-surface-2); border: 1px solid color-mix(in oklab, var(--color-text) 9%, transparent); border-radius: var(--radius-lg); transition: transform var(--transition-interactive), border-color var(--transition-interactive), background var(--transition-interactive); }
+    .option:hover, .checkbox:hover { transform: translateY(-1px); border-color: color-mix(in oklab, var(--color-primary) 28%, var(--color-border)); }
+    .option input, .checkbox input { margin-top: 0.2rem; accent-color: var(--color-primary); }
+    .option span, .checkbox span { display: block; }
+    .subtle { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); padding-top: var(--space-2); }
+    .btn { min-height: 46px; border-radius: var(--radius-full); padding: 0.8rem 1.1rem; border: 1px solid transparent; font-weight: 700; transition: transform var(--transition-interactive), background var(--transition-interactive), color var(--transition-interactive), border-color var(--transition-interactive); }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--color-primary); color: var(--color-text-inverse); }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--color-surface); color: var(--color-text); border-color: color-mix(in oklab, var(--color-text) 12%, transparent); }
+    .result-head { display: flex; justify-content: space-between; align-items: start; gap: var(--space-4); margin-bottom: var(--space-5); }
+    .score-chip { padding: 0.45rem 0.8rem; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.03em; }
+    .status { padding: var(--space-5); border-radius: var(--radius-xl); border: 1px solid transparent; margin-bottom: var(--space-4); }
+    .status h2 { margin: 0 0 var(--space-2); font-size: var(--text-lg); line-height: 1.15; }
+    .status p { margin: 0; }
+    .urgent { background: var(--color-error-highlight); color: var(--color-text); border-color: color-mix(in oklab, var(--color-error) 22%, transparent); }
+    .peripheral { background: var(--color-success-highlight); color: var(--color-text); border-color: color-mix(in oklab, var(--color-success) 20%, transparent); }
+    .neuro { background: var(--color-blue-highlight); color: var(--color-text); border-color: color-mix(in oklab, var(--color-blue) 20%, transparent); }
+    .reason-list, .advice-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+    .reason-list li, .advice-list li { padding: var(--space-3) var(--space-4); background: var(--color-surface-2); border: 1px solid color-mix(in oklab, var(--color-text) 8%, transparent); border-radius: var(--radius-lg); }
+    .mini-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(2, 1fr); margin-top: var(--space-5); }
+    .metric { padding: var(--space-4); background: var(--color-surface-2); border-radius: var(--radius-lg); border: 1px solid color-mix(in oklab, var(--color-text) 8%, transparent); }
+    .metric span { display: block; color: var(--color-text-muted); font-size: var(--text-xs); margin-bottom: var(--space-1); text-transform: uppercase; letter-spacing: 0.04em; }
+    .metric strong { font-size: var(--text-lg); font-variant-numeric: tabular-nums lining-nums; }
+    .footnote { margin-top: var(--space-5); font-size: var(--text-sm); color: var(--color-text-muted); }
+    .divider { height: 1px; background: var(--color-divider); margin: var(--space-5) 0; }
+    .empty-state { padding: var(--space-5); border-radius: var(--radius-lg); background: var(--color-surface-2); border: 1px dashed color-mix(in oklab, var(--color-text) 14%, transparent); color: var(--color-text-muted); }
+    :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .shell { padding: var(--space-4); } .topbar { align-items: flex-start; } .mini-grid { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Vertigo simulator logo">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7a5 5 0 1 0 5 5"></path>
+            <path d="M12 12l4-4"></path>
+          </svg>
+        </div>
+        <div>
+          <p>Vestibular triage web app</p>
+          <h1>暈眩風險評估與決策模擬器</h1>
+        </div>
+      </div>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+    </header>
+
+    <main class="grid">
+      <section class="panel">
+        <div class="panel-inner">
+          <span class="eyebrow">Rule-based simulator</span>
+          <h2 class="hero-title">輸入症狀特徵，自動產生初步分流建議</h2>
+          <p class="hero-copy">此工具適合用於民眾版自我風險辨識與衛教分流。結果僅作初步建議，不能取代神經學檢查、耳科檢查或正式醫療診斷。</p>
+
+          <form id="riskForm">
+            <fieldset>
+              <legend>1. 暈眩持續時間</legend>
+              <div class="options">
+                <label class="option"><input type="radio" name="duration" value="seconds" checked><span><strong>數秒</strong><br><span class="subtle">例如翻身、起床或抬頭時短暫天旋地轉</span></span></label>
+                <label class="option"><input type="radio" name="duration" value="minutes"><span><strong>數分鐘</strong><br><span class="subtle">反覆發作，但每次通常不到 1 小時</span></span></label>
+                <label class="option"><input type="radio" name="duration" value="hours"><span><strong>數小時</strong><br><span class="subtle">每次發作持續較久，可能合併噁心或不穩</span></span></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>2. 是否與頭部姿勢變動有關</legend>
+              <div class="options">
+                <label class="option"><input type="radio" name="positionTrigger" value="yes" checked><span><strong>是</strong><br><span class="subtle">翻身、躺下、起身、仰頭、低頭會誘發</span></span></label>
+                <label class="option"><input type="radio" name="positionTrigger" value="no"><span><strong>否</strong><br><span class="subtle">沒有明顯姿勢誘發，或在靜止時也會發作</span></span></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>3. 伴隨症狀</legend>
+              <div class="options">
+                <label class="checkbox"><input type="checkbox" name="symptom" value="hearing"><span><strong>聽力改變</strong><br><span class="subtle">突然變差、聽不清楚或耳悶感</span></span></label>
+                <label class="checkbox"><input type="checkbox" name="symptom" value="tinnitus"><span><strong>耳鳴</strong><br><span class="subtle">持續或發作時出現嗡嗡聲</span></span></label>
+                <label class="checkbox"><input type="checkbox" name="symptom" value="diplopia"><span><strong>複視</strong><br><span class="subtle">看東西有雙影</span></span></label>
+                <label class="checkbox"><input type="checkbox" name="symptom" value="dysphagia"><span><strong>吞嚥困難</strong><br><span class="subtle">喝水嗆到、吞嚥卡卡</span></span></label>
+                <label class="checkbox"><input type="checkbox" name="symptom" value="gait"><span><strong>步態不穩</strong><br><span class="subtle">站不穩、走路明顯偏斜或需要攙扶</span></span></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>4. 血管風險因子</legend>
+              <div class="options">
+                <label class="checkbox"><input type="checkbox" name="risk" value="htn"><span><strong>高血壓</strong></span></label>
+                <label class="checkbox"><input type="checkbox" name="risk" value="dm"><span><strong>糖尿病</strong></span></label>
+              </div>
+            </fieldset>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">產生風險建議</button>
+              <button class="btn btn-secondary" type="reset">清除重填</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-inner">
+          <div class="result-head">
+            <div>
+              <span class="eyebrow">Triage output</span>
+              <h2 class="hero-title" style="font-size:var(--text-xl); margin-bottom:0;">初步風險建議</h2>
+            </div>
+            <div class="score-chip" id="scoreChip" style="background:var(--color-surface-offset); color:var(--color-text-muted);">尚未計算</div>
+          </div>
+
+          <div id="statusBox" class="empty-state">
+            請先在左側輸入暈眩持續時間、姿勢誘發情境、伴隨症狀與血管風險因子，再按下「產生風險建議」。
+          </div>
+
+          <div class="divider"></div>
+
+          <h3 style="font-size:var(--text-lg); margin:0 0 var(--space-3);">判讀原因</h3>
+          <ul class="reason-list" id="reasonList">
+            <li>系統會根據紅旗症狀、頭位誘發與發作時間進行規則式分流。</li>
+          </ul>
+
+          <div class="mini-grid">
+            <div class="metric">
+              <span>建議科別</span>
+              <strong id="deptValue">待評估</strong>
+            </div>
+            <div class="metric">
+              <span>風險層級</span>
+              <strong id="riskValue">未分類</strong>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3 style="font-size:var(--text-lg); margin:0 0 var(--space-3);">就醫建議</h3>
+          <ul class="advice-list" id="adviceList">
+            <li>本模擬器結果僅供衛教與初步分流，不能取代正式醫療評估。</li>
+          </ul>
+
+          <p class="footnote">規則核心：若出現神經學紅旗，優先視為緊急評估；若為短暫頭位誘發且無紅旗，偏向周邊型；其餘不典型者建議神經科進一步評估。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById('riskForm');
+    const statusBox = document.getElementById('statusBox');
+    const reasonList = document.getElementById('reasonList');
+    const adviceList = document.getElementById('adviceList');
+    const deptValue = document.getElementById('deptValue');
+    const riskValue = document.getElementById('riskValue');
+    const scoreChip = document.getElementById('scoreChip');
+    const themeToggle = document.querySelector('[data-theme-toggle]');
+    const root = document.documentElement;
+
+    function setTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      themeToggle.innerHTML = theme === 'dark'
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+    }
+    setTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    themeToggle.addEventListener('click', () => setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+    function getSelections(name) {
+      return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+    }
+
+    function renderList(target, items) {
+      target.innerHTML = items.map(item => `<li>${item}</li>`).join('');
+    }
+
+    function evaluate(data) {
+      const duration = data.duration;
+      const positional = data.positionTrigger === 'yes';
+      const symptoms = new Set(data.symptoms);
+      const vascularCount = data.risks.length;
+      const redFlags = ['diplopia', 'dysphagia', 'gait'].filter(x => symptoms.has(x));
+      const otologic = ['hearing', 'tinnitus'].filter(x => symptoms.has(x));
+      const vascularHigh = vascularCount >= 1;
+
+      if (redFlags.length > 0) {
+        return {
+          tier: '建議儘速就醫（緊急紅旗徵兆）',
+          risk: '高',
+          dept: '急診／神經科',
+          chip: '緊急紅旗',
+          className: 'urgent',
+          title: '建議儘速就醫（緊急紅旗徵兆）',
+          description: '您的輸入包含疑似中樞神經紅旗症狀，應優先接受緊急評估。',
+          reasons: [
+            `出現神經學警訊：${redFlags.map(mapSymptom).join('、')}。`,
+            '此類表現不適合只用民眾自評問卷觀察，需優先排除腦幹、小腦或其他急性神經系統病因。',
+            vascularHigh ? '同時合併血管風險因子，使中樞性病因警覺度更高。' : '即使沒有已知血管風險因子，仍建議立即就醫。'
+          ],
+          advice: [
+            '請盡快前往急診，優先由神經科或中風團隊評估。',
+            '若伴隨新發嚴重頭痛、肢體無力、說話不清或症狀惡化，應立即就醫，不宜自行觀察。',
+            '此結果不是診斷，而是緊急分流提醒。'
+          ]
+        };
+      }
+
+      if (positional && duration === 'seconds' && !symptoms.has('hearing') && !symptoms.has('diplopia') && !symptoms.has('dysphagia') && !symptoms.has('gait')) {
+        return {
+          tier: '可能為周邊型（如 BPPV）',
+          risk: '低到中',
+          dept: '耳鼻喉科／神經耳科',
+          chip: '周邊型樣態',
+          className: 'peripheral',
+          title: '可能為周邊型（如 BPPV）',
+          description: '症狀型態較接近短暫、頭位誘發的周邊前庭性暈眩。',
+          reasons: [
+            '暈眩屬於數秒發作，時間短暫。',
+            '症狀與頭部姿勢改變有關，符合位置性誘發特徵。',
+            '目前未勾選複視、吞嚥困難或明顯步態不穩等神經學紅旗。'
+          ],
+          advice: [
+            '建議安排耳鼻喉科、神經耳科或熟悉前庭疾病的門診評估。',
+            '若醫師判斷符合 BPPV，可進一步接受位置性測試與復位治療。',
+            '若之後出現持續惡化、無法站穩或新的神經症狀，請立即改至急診。'
+          ]
+        };
+      }
+
+      const concerningFeatures = [];
+      if (!positional) concerningFeatures.push('沒有明顯頭位誘發');
+      if (duration === 'minutes' || duration === 'hours') concerningFeatures.push(`發作時間為${duration === 'minutes' ? '數分鐘' : '數小時'}`);
+      if (vascularHigh) concerningFeatures.push('合併血管風險因子');
+      if (otologic.length > 0) concerningFeatures.push(`有耳科症狀：${otologic.map(mapSymptom).join('、')}`);
+
+      return {
+        tier: '需轉診神經科進行進一步評估',
+        risk: '中',
+        dept: otologic.length > 0 ? '神經科／耳鼻喉科' : '神經科',
+        chip: '需進一步評估',
+        className: 'neuro',
+        title: '需轉診神經科進行進一步評估',
+        description: '目前症狀不屬於典型短暫位置性周邊型樣態，建議接受進一步診察。',
+        reasons: [
+          concerningFeatures.length ? `需要進一步評估的因素包括：${concerningFeatures.join('、')}。` : '症狀型態屬於非典型或混合型，單靠自評問卷難以分類。',
+          '此類型態可能涉及中樞性、周邊性或其他非前庭性原因，需由醫師結合病史與神經學檢查判讀。',
+          vascularHigh ? '因為存在血管風險因子，若症狀突然加劇或持續不退，應提高急診評估警覺。' : '若後續出現新的神經學症狀，應改走緊急就醫路徑。'
+        ],
+        advice: [
+          `建議就診科別：${otologic.length > 0 ? '神經科或耳鼻喉科' : '神經科'}。`,
+          '門診評估時可再視需要安排神經學檢查、眼振評估、聽力檢查或影像檢查。',
+          '若在等待門診期間出現複視、吞嚥困難、明顯站不穩或症狀快速惡化，請改至急診。'
+        ]
+      };
+    }
+
+    function mapSymptom(key) {
+      return ({ hearing:'聽力改變', tinnitus:'耳鳴', diplopia:'複視', dysphagia:'吞嚥困難', gait:'步態不穩' })[key] || key;
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const data = {
+        duration: formData.get('duration'),
+        positionTrigger: formData.get('positionTrigger'),
+        symptoms: getSelections('symptom'),
+        risks: getSelections('risk')
+      };
+      const result = evaluate(data);
+      statusBox.className = `status ${result.className}`;
+      statusBox.innerHTML = `<h2>${result.title}</h2><p>${result.description}</p>`;
+      riskValue.textContent = result.risk;
+      deptValue.textContent = result.dept;
+      scoreChip.textContent = result.chip;
+      scoreChip.style.background = result.className === 'urgent' ? 'var(--color-error-highlight)' : result.className === 'peripheral' ? 'var(--color-success-highlight)' : 'var(--color-blue-highlight)';
+      scoreChip.style.color = 'var(--color-text)';
+      renderList(reasonList, result.reasons);
+      renderList(adviceList, result.advice);
+    });
+
+    form.addEventListener('reset', () => {
+      setTimeout(() => {
+        statusBox.className = 'empty-state';
+        statusBox.textContent = '請先在左側輸入暈眩持續時間、姿勢誘發情境、伴隨症狀與血管風險因子，再按下「產生風險建議」。';
+        renderList(reasonList, ['系統會根據紅旗症狀、頭位誘發與發作時間進行規則式分流。']);
+        renderList(adviceList, ['本模擬器結果僅供衛教與初步分流，不能取代正式醫療評估。']);
+        deptValue.textContent = '待評估';
+        riskValue.textContent = '未分類';
+        scoreChip.textContent = '尚未計算';
+        scoreChip.style.background = 'var(--color-surface-offset)';
+        scoreChip.style.color = 'var(--color-text-muted)';
+      }, 0);
+    });
+  </script>
+</body>
+</html>
